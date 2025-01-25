@@ -95,81 +95,44 @@ public class Gerenciador implements Runnable {
 
     @Override
     public void run() {
-        /* lê usos do arquivo do usuário
-        // listaDeUsos = (ArrayList<Uso>)
-        // PessoaFisica.resgatarListaUsoMedicamentosArquivo(pessoa.getNomeArquivoUsos());
-        // if (listaDeUsos == null) {
-        // Thread.interrupted();
-        // }
-        // calcula todos os horários de cada um dos usos
-        // for (Uso uso : listaDeUsos) {
-        // uso.calcularHorariosDeUso();
-        // }
-        */
-
-        
-        //thread que envia notificações de compra de remédios a cada 1 hora
-        //além disso, verfica a necessidade diminuir em um dia a duração do tratamento todo dia às 0hXmin
-        //verifica a necessidade de enviar notificações sobre horario de tomar medicamento
         while (true) {
-            //lê arquivo de usos do usuário
-            listaDeUsos = (ArrayList<Uso>) PessoaFisica.resgatarListaUsoMedicamentosArquivo(pessoa.getNomeArquivoUsos());
-            
-            //calcula horários de uso de acordo com intervalo e hora inicial
-            for (Uso uso : listaDeUsos) {
-                uso.calcularHorariosDeUso();
-            }
-
-            // enviar notificacao para comprar remedios caso não seja suficiente para o
-            // término do tratamento
-            for (Uso uso : listaDeUsos) {
-                if (verificarQtdRemedio(uso)) {
-                    while(enviarNotificacaoCompra(uso)){}
-                }
-                //System.out.println("compra "+uso.getRemedio().getNome());
-            }
-
-            //enviar notificacao para tomar o medicamento na hora correta
-            for (Uso uso : listaDeUsos) {
-                for (Integer horario : uso.getHorariosDeUso()) {
-                    if (Data.horaDoRemedio(uso,horario)) {
-                        while(enviarNotificacao("Nome do remédio: " + uso.getRemedio().getNome() + "\nDias da semana: "
-                                + uso.getHorarios().toString()+ "\nHorário: "
-                                + horario + "h\nDose: "+uso.getDose() +" comprimido(s)\n"
-                                + "Você tomou o remédio às " + horario
-                                + " horas?\n Se sim, clique em SIM para confirmar. Clique em NÃO, caso contrário.",
-                                uso));
-                    }
-                }
-            }
-
-            //System.out.println("aqui!!!");
-
-            //exclui uso quando a duracao do tramento é finalizada
-            for(Uso uso: listaDeUsos){
-                if(uso.getDuracaoDoTratamento() == 0){
-                    excluirUso(uso);
-                }
-            }
-            
-
-            //diminui um dia na duracao de uso a cada virada de dia
-            if(Data.ehMeiaNoite()){
-                for (Uso uso : listaDeUsos) {
-                    atualizarDuracaoDeUso(uso);  
-                } 
-            }
-            
-            //gerenciador dorme por uma hora
-            int menorIntervalo = verificarIntervaloDoGerenciador();
-            //long dormir = menorIntervalo * 3600000;
-            long dormir = 3600000;
-            //System.out.print("aqui!!!!!!!");
             try {
-                Thread.sleep(dormir);
+                executarGerenciamento();
+                Thread.sleep(3600000); // Dorme por uma hora
             } catch (InterruptedException e) {
                 e.printStackTrace();
-            }  
+                Thread.currentThread().interrupt(); // Marca a thread como interrompida novamente
+            }
         }
     }
+
+    public void executarGerenciamento() {
+        atualizarListaDeUsos();
+        calcularHorariosDeUso();
+        enviarNotificacoesDeCompra();        
+        excluirUsosFinalizados();        
+    }
+
+    public void atualizarListaDeUsos() {
+        listaDeUsos = (ArrayList<Uso>) PessoaFisica.resgatarListaUsoMedicamentosArquivo(pessoa.getNomeArquivoUsos());
+    }
+
+    public void calcularHorariosDeUso() {
+        for (Uso uso : listaDeUsos) {
+            uso.calcularHorariosDeUso();
+        }
+    }
+
+    public static void enviarNotificacoesDeCompra() {
+        for (Uso uso : listaDeUsos) {
+            if (verificarQtdRemedio(uso)) {
+                enviarNotificacaoCompra(uso);
+            }
+        }
+    }    
+
+    public void excluirUsosFinalizados() {
+        listaDeUsos.removeIf(uso -> uso.getDuracaoDoTratamento() == 0);
+    }   
+
 }
